@@ -1,8 +1,12 @@
 // Client Supabase utilisé côté serveur (pages et composants serveur).
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 
 export async function creerClientServeur() {
+  // Les données Supabase sont propres à chaque personne et changent sans cesse :
+  // on indique à Next.js de toujours les lire au moment de la visite, jamais à l'avance.
+  await connection();
   const cookieStore = await cookies();
 
   return createServerClient(

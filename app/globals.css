@@ -10,6 +10,8 @@
   --color-odon-gris-texte: #5B6772;  /* texte secondaire */
   --color-odon-alerte: #C2410C;      /* ruptures, alertes */
   --font-sans: var(--font-inter);
+  --font-titre: var(--font-outfit);
+  --color-odon-turquoise-texte: #006E85; /* turquoise foncé, lisible en petit texte */
 }
 
 body {
@@ -18,3 +20,42 @@ body {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
+
+/* Impression : page A4, sans fond gris ni boutons */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body {
+    background: #ffffff;
+  }
+  .impression-masquee {
+    display: none !important;
+  }
+}
+
+/* Toutes les listes déroulantes : flèche fine, espacée du bord droit.
+   La classe « sans-fleche » désactive cette règle pour les listes qui dessinent la leur. */
+@layer base {
+  select:not(.sans-fleche) {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235B6772' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 12px 12px;
+    padding-inline-end: 2.5rem !important;
+    cursor: pointer;
+  }
+}
+
+/* Impression des pages de l'application : seul le contenu est imprimé */
+@media print {
+  main {
+    padding: 0 !important;
+  }
+  table {
+    min-width: 0 !important;
+  }
+}
