@@ -101,17 +101,43 @@ async function Contenu({ searchParams }: Props) {
   const nbPertes = (pertes ?? []).reduce((n, p) => n + p.quantite, 0);
   const coutReparations = (reparations ?? []).reduce((n, r) => n + (Number(r.cout) || 0), 0);
 
-  const indicateurs = [
+  // Regroupe au-delà de 10 lignes dans « Autres », pour des blocs de même hauteur
+  const dixPremiers = (points: { cle: string; libelle: string; valeur: number; texte: string }[]) => {
+    if (points.length <= 10) return points;
+    const reste = points.slice(9).reduce((n, p) => n + p.valeur, 0);
+    return [...points.slice(0, 9), { cle: "autres", libelle: `Autres (${points.length - 9})`, valeur: reste, texte: texte(reste) }];
+  };
+
+  const nbReparations = (reparations ?? []).length;
+  const indicateurs: { label: string; valeur: string; note: React.ReactNode; alerte?: boolean }[] = [
     { label: valeurs ? "Consommation moyenne / mois" : "Unités sorties / mois", valeur: moyenne ? texte(moyenne) : "—", note: moisComplets.length ? `sur ${moisComplets.length} mois complet${moisComplets.length > 1 ? "s" : ""}` : "pas encore de mois complet" },
     { label: valeurs ? "Réceptions sur la période" : "Unités reçues", valeur: texte(somme(entrees)), note: `${entrees.length} ligne${entrees.length > 1 ? "s" : ""} de réception` },
+    valeurs
+      ? { label: "Valeur du stock aujourd'hui", valeur: formaterPrix(etat.reduce((n, l) => n + l.valeur, 0)), note: `${etat.length} produits suivis` }
+      : { label: "Produits suivis", valeur: String(etat.length), note: "dans le stock du centre" },
+    valeurs
+      ? { label: "Stock dormant", valeur: formaterPrix(valeurDormante), note: `${dormants.length} produit${dormants.length > 1 ? "s" : ""} sans sortie depuis 90 jours`, alerte: valeurDormante > 0 }
+      : { label: "Produits dormants", valeur: String(dormants.length), note: "sans sortie depuis 90 jours", alerte: dormants.length > 0 },
     { label: "Ruptures en ce moment", valeur: String(ruptures), note: "produits à zéro", alerte: ruptures > 0 },
     { label: "Fiabilité des sorties", valeur: fiabilite == null ? "—" : `${fiabilite} %`, note: "mesurée aux inventaires (30 jours)" },
+    {
+      label: "Scan posts perdus",
+      valeur: String(nbPertes),
+      note: <Link href="/scan-posts/historique?type=perte" className="font-semibold text-odon-bleu hover:underline">Voir le détail</Link>,
+      alerte: nbPertes > 0,
+    },
+    valeurs
+      ? { label: "Réparations de rotatifs", valeur: formaterPrix(coutReparations), note: `${nbReparations} envoi${nbReparations > 1 ? "s" : ""} sur la période` }
+      : { label: "Rotatifs envoyés en réparation", valeur: String(nbReparations), note: "sur la période" },
   ];
 
-  const carte = "rounded-2xl border border-[#E3E7EB] bg-white p-5";
+  const carte = "flex flex-col rounded-2xl border border-[#E3E7EB] bg-white p-5";
+  const titreBloc = "text-base font-semibold text-odon-encre";
+  const videBloc = (t: string) => <p className="flex flex-1 items-center justify-center py-8 text-sm text-odon-gris-texte">{t}</p>;
+  const ligne = "flex items-center justify-between gap-3 border-t border-[#EEF1F4] py-2.5 text-sm first:border-t-0";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <nav aria-label="Période" className="flex flex-wrap items-center gap-2">
         <span className="mr-1 text-sm font-semibold text-odon-gris-texte">Période :</span>
         {[3, 6, 12].map((n) => (
@@ -127,104 +153,86 @@ async function Contenu({ searchParams }: Props) {
         {!valeurs && <span className="ml-2 text-xs text-odon-gris-texte">Les montants sont réservés à l&apos;administrateur, au responsable de stock et à la direction : les volumes sont affichés en unités.</span>}
       </nav>
 
-      <section aria-label="Indicateurs" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Indicateurs" className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {indicateurs.map((c) => (
           <div key={c.label} className={carte}>
             <p className="text-sm font-medium text-odon-gris-texte">{c.label}</p>
             <p className={`mt-1 font-titre text-3xl font-semibold ${c.alerte ? "text-odon-alerte" : "text-odon-nuit"}`}>{c.valeur}</p>
-            <p className="mt-0.5 text-xs text-odon-gris-texte">{c.note}</p>
+            <p className="mt-auto pt-0.5 text-xs text-odon-gris-texte">{c.note}</p>
           </div>
         ))}
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <section className={carte}>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className={titreBloc}>{valeurs ? "Consommation mois par mois (€)" : "Unités sorties mois par mois"}</h2>
+          <span className="text-xs text-odon-gris-texte">mois en cours en plus clair · survolez une barre</span>
+        </div>
+        <Colonnes points={pointsMois} titre="Consommation mois par mois" />
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-2">
         <section className={carte}>
-          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold text-odon-encre">{valeurs ? "Consommation mois par mois (€)" : "Unités sorties mois par mois"}</h2>
-            <span className="text-xs text-odon-gris-texte">mois en cours en plus clair · survolez une barre</span>
-          </div>
-          <Colonnes points={pointsMois} titre="Consommation mois par mois" />
+          <h2 className={`${titreBloc} mb-4`}>Par catégorie</h2>
+          {parCategorie.length ? <Barres points={dixPremiers(parCategorie)} vide="" /> : videBloc("Aucune sortie sur la période.")}
         </section>
         <section className={carte}>
-          <h2 className="mb-4 text-base font-semibold text-odon-encre">Par catégorie</h2>
-          <Barres points={parCategorie} vide="Aucune sortie sur la période." />
+          <h2 className={`${titreBloc} mb-4`}>Par cabinet et lieu de sortie</h2>
+          {parLieu.length ? <Barres points={dixPremiers(parLieu)} vide="" /> : videBloc("Aucune sortie sur la période.")}
         </section>
       </div>
 
-      <div className="grid items-start gap-6 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         <section className={carte}>
-          <h2 className="mb-3 text-base font-semibold text-odon-encre">Top 10 des produits</h2>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className={titreBloc}>Top 10 des produits</h2>
+            <span className="text-xs text-odon-gris-texte">{valeurs ? "par coût" : "par quantité"} sur la période</span>
+          </div>
           {!top10.length ? (
-            <p className="py-6 text-center text-sm text-odon-gris-texte">Aucune sortie sur la période.</p>
+            videBloc("Aucune sortie sur la période.")
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[13px] text-odon-gris-texte">
-                  <th scope="col" className="py-2 font-medium">Produit</th>
-                  <th scope="col" className="py-2 text-right font-medium">Sorties</th>
-                  {valeurs && <th scope="col" className="py-2 text-right font-medium">Coût</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {top10.map((t, i) => (
-                  <tr key={t.nom} className="border-t border-[#EEF1F4]">
-                    <td className="py-2.5 pr-3"><span className="mr-2 text-xs font-semibold text-odon-gris-texte">{i + 1}</span><span className="font-medium text-odon-encre">{t.nom}</span></td>
-                    <td className="py-2.5 text-right text-[#33404B]">{t.quantite} {pluriel(t.unite, t.quantite)}</td>
-                    {valeurs && <td className="py-2.5 text-right font-semibold">{formaterPrix(t.valeur)}</td>}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-        <section className={carte}>
-          <h2 className="mb-4 text-base font-semibold text-odon-encre">Par cabinet et lieu de sortie</h2>
-          <Barres points={parLieu} vide="Aucune sortie sur la période." />
-        </section>
-      </div>
-
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <section className={carte}>
-          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold text-odon-encre">Produits dormants</h2>
-            {valeurs && dormants.length > 0 && <span className="text-sm font-semibold text-odon-alerte">{formaterPrix(valeurDormante)} immobilisés</span>}
-          </div>
-          <p className="mb-3 text-xs text-odon-gris-texte">En stock, mais aucune sortie depuis 90 jours : à ne pas recommander, voire à écouler.</p>
-          {!dormants.length ? (
-            <p className="py-4 text-center text-sm text-odon-gris-texte">Aucun produit dormant.</p>
-          ) : (
-            <ul>
-              {dormants.slice(0, 8).map((d) => (
-                <li key={d.id} className="flex items-center justify-between gap-3 border-t border-[#EEF1F4] py-2.5 first:border-t-0">
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium text-odon-encre">{d.nom}</span>
-                    <span className="text-xs text-odon-gris-texte">{formaterStock(d.stock, d.parAchat, d.uniteAchat, d.uniteSortie)}</span>
+            <ol>
+              {top10.map((t, i) => (
+                <li key={t.nom} className={ligne}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="w-5 shrink-0 text-xs font-semibold text-odon-gris-texte">{i + 1}</span>
+                    <span className="truncate font-medium text-odon-encre">{t.nom}</span>
                   </span>
-                  {valeurs && <span className="text-sm font-semibold">{formaterPrix(d.valeur)}</span>}
+                  <span className="flex shrink-0 items-center gap-4">
+                    <span className="text-[#33404B]">{t.quantite} {pluriel(t.unite, t.quantite)}</span>
+                    {valeurs && <span className="w-20 text-right font-semibold">{formaterPrix(t.valeur)}</span>}
+                  </span>
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
         </section>
-        <section className="flex flex-col gap-3">
-          <div className={carte}>
-            <p className="text-sm font-medium text-odon-gris-texte">Scan posts perdus sur la période</p>
-            <p className={`mt-1 font-titre text-3xl font-semibold ${nbPertes ? "text-odon-alerte" : "text-odon-nuit"}`}>{nbPertes}</p>
-            <Link href="/scan-posts/historique?type=perte" className="mt-1 inline-block text-xs font-semibold text-odon-bleu hover:underline">Voir le détail</Link>
+        <section className={carte}>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className={titreBloc}>Produits dormants</h2>
+            <span className="text-xs text-odon-gris-texte">en stock, aucune sortie depuis 90 jours</span>
           </div>
-          {valeurs && (
-            <div className={carte}>
-              <p className="text-sm font-medium text-odon-gris-texte">Réparations de rotatifs sur la période</p>
-              <p className="mt-1 font-titre text-3xl font-semibold text-odon-nuit">{formaterPrix(coutReparations)}</p>
-              <p className="mt-0.5 text-xs text-odon-gris-texte">{(reparations ?? []).length} envoi{(reparations ?? []).length > 1 ? "s" : ""} en réparation · coûts saisis dans Rotatifs</p>
-            </div>
-          )}
-          {valeurs && (
-            <div className={carte}>
-              <p className="text-sm font-medium text-odon-gris-texte">Valeur du stock aujourd&apos;hui</p>
-              <p className="mt-1 font-titre text-3xl font-semibold text-odon-nuit">{formaterPrix(etat.reduce((n, l) => n + l.valeur, 0))}</p>
-              <p className="mt-0.5 text-xs text-odon-gris-texte">{etat.length} produits suivis</p>
-            </div>
+          {!dormants.length ? (
+            videBloc("Aucun produit dormant.")
+          ) : (
+            <>
+              <ul>
+                {dormants.slice(0, 10).map((d) => (
+                  <li key={d.id} className={ligne}>
+                    <span className="truncate font-medium text-odon-encre">{d.nom}</span>
+                    <span className="flex shrink-0 items-center gap-4">
+                      <span className="text-[#33404B]">{formaterStock(d.stock, d.parAchat, d.uniteAchat, d.uniteSortie)}</span>
+                      {valeurs && <span className="w-20 text-right font-semibold">{formaterPrix(d.valeur)}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {dormants.length > 10 && (
+                <Link href="/stock" className="mt-auto pt-3 text-xs font-semibold text-odon-bleu hover:underline">
+                  et {dormants.length - 10} autre{dormants.length - 10 > 1 ? "s" : ""} · voir l&apos;état du stock
+                </Link>
+              )}
+            </>
           )}
         </section>
       </div>
