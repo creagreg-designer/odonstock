@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { modifierRotatif, supprimerRotatif } from "./actions";
 
-type Rotatif = { id: string; typeId: string; numeroSerie: string; marque: string | null; modele: string | null };
+type Rotatif = { id: string; typeId: string; numeroSerie: string | null; marque: string | null; modele: string | null };
 
 const champ =
   "h-11 w-full rounded-lg border border-[#D5DBE0] bg-white px-3 text-sm text-odon-encre outline-none focus:border-odon-turquoise focus:ring-2 focus:ring-odon-turquoise/30";
@@ -13,7 +13,7 @@ const etiquette = "flex flex-col gap-1.5 text-sm font-semibold text-odon-encre";
 export default function ActionsLigne({ rotatif, types }: { rotatif: Rotatif; types: { id: string; nom: string }[] }) {
   const fenetre = useRef<HTMLDialogElement>(null);
   const [typeId, setTypeId] = useState(rotatif.typeId);
-  const [numero, setNumero] = useState(rotatif.numeroSerie);
+  const [numero, setNumero] = useState(rotatif.numeroSerie ?? "");
   const [marque, setMarque] = useState(rotatif.marque ?? "");
   const [modele, setModele] = useState(rotatif.modele ?? "");
   const [erreur, setErreur] = useState("");
@@ -22,7 +22,7 @@ export default function ActionsLigne({ rotatif, types }: { rotatif: Rotatif; typ
 
   function ouvrir() {
     setTypeId(rotatif.typeId);
-    setNumero(rotatif.numeroSerie);
+    setNumero(rotatif.numeroSerie ?? "");
     setMarque(rotatif.marque ?? "");
     setModele(rotatif.modele ?? "");
     setErreur("");
@@ -59,12 +59,12 @@ export default function ActionsLigne({ rotatif, types }: { rotatif: Rotatif; typ
 
   return (
     <span className="inline-flex items-center justify-end gap-1">
-      <button type="button" onClick={ouvrir} aria-label={`Modifier le rotatif n° ${rotatif.numeroSerie}`} className={`${icone} hover:bg-[#E6F7FB] hover:text-odon-bleu`}>
+      <button type="button" onClick={ouvrir} aria-label={`Modifier le rotatif ${rotatif.numeroSerie ? `n° ${rotatif.numeroSerie}` : "sans numéro"}`} className={`${icone} hover:bg-[#E6F7FB] hover:text-odon-bleu`}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
         </svg>
       </button>
-      <button type="button" onClick={() => setConfirmer(true)} aria-label={`Supprimer le rotatif n° ${rotatif.numeroSerie}`} className={`${icone} hover:bg-[#FDECE3] hover:text-odon-alerte`}>
+      <button type="button" onClick={() => setConfirmer(true)} aria-label={`Supprimer le rotatif ${rotatif.numeroSerie ? `n° ${rotatif.numeroSerie}` : "sans numéro"}`} className={`${icone} hover:bg-[#FDECE3] hover:text-odon-alerte`}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
         </svg>
@@ -102,8 +102,8 @@ export default function ActionsLigne({ rotatif, types }: { rotatif: Rotatif; typ
               </select>
             </label>
             <label className={etiquette}>
-              Numéro de série *
-              <input required value={numero} onChange={(e) => setNumero(e.target.value)} className={champ} autoComplete="off" />
+              Numéro de série
+              <input value={numero} onChange={(e) => setNumero(e.target.value)} className={champ} autoComplete="off" />
             </label>
             <label className={etiquette}>
               Marque

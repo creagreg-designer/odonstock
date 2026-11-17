@@ -4,7 +4,7 @@ import Coque, { classesBouton, classesBoutonSecondaire } from "@/components/coqu
 import { creerClientServeur } from "@/lib/supabase/server";
 import { lireProfil, nomDe, peutGerer } from "@/lib/profil";
 import { dateCourteParis, joursDepuis } from "@/lib/format";
-import { couleurType, LISTE_STATUTS, STATUTS, type Statut } from "@/lib/rotatifs";
+import { couleurType, LISTE_STATUTS, STATUTS, type Statut, comparerNumeros, SANS_NUMERO } from "@/lib/rotatifs";
 import AjoutRotatif from "./ajout-rotatif";
 import { DetailsReparation, Objectif, SelectStatut } from "./elements";
 import ActionsLigne from "./actions-ligne";
@@ -54,6 +54,7 @@ async function Contenu({ searchParams }: Props) {
       enCirculation,
       panne: n("panne"),
       reparation: n("reparation"),
+      reserve: n("reserve"),
       horsService: n("hors_service"),
       objectif,
       tropJuste: objectif != null && enCirculation < objectif,
@@ -63,8 +64,8 @@ async function Contenu({ searchParams }: Props) {
   const liste = parc
     .filter((r) => !f.type || r.type_id === f.type)
     .filter((r) => !f.statut || r.statut === f.statut)
-    .filter((r) => !recherche || r.numero_serie.toLowerCase().includes(recherche.toLowerCase()))
-    .sort((a, b) => (ordreType.get(a.type_id) ?? 0) - (ordreType.get(b.type_id) ?? 0) || a.numero_serie.localeCompare(b.numero_serie, "fr", { numeric: true }));
+    .filter((r) => !recherche || (r.numero_serie ?? "").toLowerCase().includes(recherche.toLowerCase()))
+    .sort((a, b) => (ordreType.get(a.type_id) ?? 0) - (ordreType.get(b.type_id) ?? 0) || comparerNumeros(a.numero_serie, b.numero_serie));
 
   const champ = "h-11 rounded-lg border border-[#D5DBE0] bg-white px-3 text-sm text-odon-encre";
 
@@ -96,7 +97,10 @@ async function Contenu({ searchParams }: Props) {
               </div>
             )}
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-odon-gris-texte">
-              <span>{c.panne} en panne · {c.reparation} en réparation · {c.horsService} hors service</span>
+              <span>
+                {c.reserve > 0 && <strong className="font-semibold text-[#2E4A6B]">{c.reserve} en réserve · </strong>}
+                {c.panne} en panne · {c.reparation} en réparation · {c.horsService} hors service
+              </span>
               <Objectif typeId={c.id} objectif={c.objectif} modifiable={modifiable} />
             </div>
           </div>
@@ -158,7 +162,9 @@ async function Contenu({ searchParams }: Props) {
                           {nomType.get(r.type_id)}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 font-semibold text-odon-encre">{r.numero_serie}</td>
+                      <td className="px-3 py-2.5 font-semibold text-odon-encre">
+                        {r.numero_serie ?? <span className="font-normal italic text-odon-gris-texte">{SANS_NUMERO}</span>}
+                      </td>
                       <td className="px-3 py-2.5 text-[#33404B]">{[r.marque, r.modele].filter(Boolean).join(" · ") || "—"}</td>
                       <td className="px-3 py-2.5 text-right">
                         <SelectStatut id={r.id} statut={r.statut as Statut} modifiable={modifiable} />
@@ -188,12 +194,12 @@ async function Contenu({ searchParams }: Props) {
             <p className="py-6 text-center text-sm text-odon-gris-texte">Aucun rotatif en réparation.</p>
           ) : (
             reparations.map((rep) => {
-              const rot = (Array.isArray(rep.rotatifs) ? rep.rotatifs[0] : rep.rotatifs) as { numero_serie: string; rotatif_types: unknown } | undefined;
+              const rot = (Array.isArray(rep.rotatifs) ? rep.rotatifs[0] : rep.rotatifs) as { numero_serie: string | null; rotatif_types: unknown } | undefined;
               const jours = joursDepuis(rep.envoye_le);
               return (
                 <div key={rep.id} className="flex flex-col gap-1 border-t border-[#EEF1F4] py-3 first:border-t-0">
                   <span className="text-sm font-semibold text-odon-encre">
-                    {nomDe(rot?.rotatif_types) ?? "Rotatif"} · n° {rot?.numero_serie}
+                    {nomDe(rot?.rotatif_types) ?? "Rotatif"} · {rot?.numero_serie ? `n° ${rot.numero_serie}` : SANS_NUMERO}
                   </span>
                   <span className="text-xs text-odon-gris-texte">
                     Envoyé le {dateCourteParis(rep.envoye_le)} · depuis {jours} jour{jours > 1 ? "s" : ""}

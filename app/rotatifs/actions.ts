@@ -25,7 +25,7 @@ export async function ajouterRotatif(donnees: {
   const ctx = await contexte();
   if (!ctx) return REFUS;
   const numero = donnees.numeroSerie.trim();
-  if (!donnees.typeId || !numero) return { ok: false, message: "Le type et le numéro de série sont obligatoires." };
+  if (!donnees.typeId) return { ok: false, message: "Le type est obligatoire." };
   if (!LISTE_STATUTS.includes(donnees.statut)) return { ok: false, message: "Statut inconnu." };
 
   const { data, error } = await ctx.supabase
@@ -33,7 +33,7 @@ export async function ajouterRotatif(donnees: {
     .insert({
       centre_id: ctx.centreId,
       type_id: donnees.typeId,
-      numero_serie: numero,
+      numero_serie: numero || null,
       marque: donnees.marque.trim() || null,
       modele: donnees.modele.trim() || null,
       statut: donnees.statut,
@@ -53,7 +53,7 @@ export async function ajouterRotatif(donnees: {
     await ctx.supabase.from("reparations").insert({ rotatif_id: data.id });
   }
   refresh();
-  return { ok: true, message: `Rotatif n° ${numero} ajouté.` };
+  return { ok: true, message: numero ? `Rotatif n° ${numero} ajouté.` : "Rotatif sans numéro ajouté." };
 }
 
 export async function changerStatut(rotatifId: string, statut: Statut): Promise<Resultat> {
@@ -128,12 +128,12 @@ export async function modifierRotatif(
   const ctx = await contexteAdmin();
   if (!ctx) return REFUS_ADMIN;
   const numero = donnees.numeroSerie.trim();
-  if (!donnees.typeId || !numero) return { ok: false, message: "Le type et le numéro de série sont obligatoires." };
+  if (!donnees.typeId) return { ok: false, message: "Le type est obligatoire." };
   const { error } = await ctx.supabase
     .from("rotatifs")
     .update({
       type_id: donnees.typeId,
-      numero_serie: numero,
+      numero_serie: numero || null,
       marque: donnees.marque.trim() || null,
       modele: donnees.modele.trim() || null,
     })
@@ -146,7 +146,7 @@ export async function modifierRotatif(
     };
   }
   refresh();
-  return { ok: true, message: `Rotatif n° ${numero} modifié.` };
+  return { ok: true, message: numero ? `Rotatif n° ${numero} modifié.` : "Rotatif modifié." };
 }
 
 export async function supprimerRotatif(id: string): Promise<Resultat> {

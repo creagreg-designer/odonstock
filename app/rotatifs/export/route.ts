@@ -1,7 +1,7 @@
 // Export du parc de rotatifs au format CSV (s'ouvre directement dans Excel)
 import { creerClientServeur } from "@/lib/supabase/server";
 import { lireProfil, nomDe } from "@/lib/profil";
-import { STATUTS, type Statut } from "@/lib/rotatifs";
+import { STATUTS, type Statut, comparerNumeros } from "@/lib/rotatifs";
 import { jourParis } from "@/lib/format";
 
 function cellule(v: unknown) {
@@ -21,7 +21,7 @@ export async function GET() {
 
   const lignes = (data ?? [])
     .map((r) => ({ ...r, type: nomDe(r.rotatif_types) ?? "" }))
-    .sort((a, b) => a.type.localeCompare(b.type, "fr") || a.numero_serie.localeCompare(b.numero_serie, "fr", { numeric: true }));
+    .sort((a, b) => a.type.localeCompare(b.type, "fr") || comparerNumeros(a.numero_serie, b.numero_serie));
 
   const entete = ["Type", "Numéro de série", "Marque", "Modèle", "Statut", "Ajouté le"];
   const corps = lignes.map((r) =>

@@ -87,8 +87,8 @@ export default function AjoutRotatif({ types }: { types: { id: string; nom: stri
               </select>
             </label>
             <label className={etiquette}>
-              Numéro de série *
-              <input required value={numero} onChange={(e) => setNumero(e.target.value)} className={champ} placeholder="Ex. 11802" autoComplete="off" />
+              Numéro de série
+              <input value={numero} onChange={(e) => setNumero(e.target.value)} className={champ} placeholder="Vide si la pièce n'en a pas" autoComplete="off" />
             </label>
             <label className={etiquette}>
               Marque

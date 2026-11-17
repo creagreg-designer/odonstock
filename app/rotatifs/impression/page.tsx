@@ -4,7 +4,7 @@ import Logo from "@/components/logo";
 import { creerClientServeur } from "@/lib/supabase/server";
 import { lireProfil } from "@/lib/profil";
 import { maintenantEnLettres } from "@/lib/format";
-import { LISTE_STATUTS, STATUTS, type Statut } from "@/lib/rotatifs";
+import { LISTE_STATUTS, STATUTS, comparerNumeros, SANS_NUMERO, type Statut } from "@/lib/rotatifs";
 import Imprimer from "./imprimer";
 
 export const metadata = { title: "État des rotatifs · OdonStock" };
@@ -15,7 +15,7 @@ async function Etat() {
   const supabase = await creerClientServeur();
   const [{ data: types }, { data: parc }, { data: objectifs }] = await Promise.all([
     supabase.from("rotatif_types").select("id, nom").order("ordre"),
-    supabase.from("rotatifs").select("type_id, numero_serie, marque, modele, statut").eq("centre_id", profil.centre_id),
+    supabase.from("rotatifs").select("id, type_id, numero_serie, marque, modele, statut").eq("centre_id", profil.centre_id),
     supabase.from("rotatif_objectifs").select("type_id, objectif").eq("centre_id", profil.centre_id),
   ]);
   const objectifPar = new Map((objectifs ?? []).map((o) => [o.type_id, o.objectif as number]));
@@ -25,7 +25,7 @@ async function Etat() {
       ...t,
       lignes: rotatifs
         .filter((r) => r.type_id === t.id)
-        .sort((a, b) => a.numero_serie.localeCompare(b.numero_serie, "fr", { numeric: true })),
+        .sort((a, b) => comparerNumeros(a.numero_serie, b.numero_serie)),
       objectif: objectifPar.get(t.id) ?? null,
     }))
     .filter((g) => g.lignes.length || g.objectif != null);
@@ -52,6 +52,7 @@ async function Etat() {
               <th className="py-1.5 pr-2 font-semibold">Type</th>
               <th className="px-2 py-1.5 text-right font-semibold">En circulation</th>
               <th className="px-2 py-1.5 text-right font-semibold">Objectif</th>
+              <th className="px-2 py-1.5 text-right font-semibold">En réserve</th>
               <th className="px-2 py-1.5 text-right font-semibold">En panne</th>
               <th className="px-2 py-1.5 text-right font-semibold">En réparation</th>
               <th className="px-2 py-1.5 text-right font-semibold">Hors service</th>
@@ -69,6 +70,7 @@ async function Etat() {
                     {n("circulation")}{juste ? " ⚠" : ""}
                   </td>
                   <td className="px-2 py-1.5 text-right">{g.objectif ?? "—"}</td>
+                  <td className="px-2 py-1.5 text-right">{n("reserve")}</td>
                   <td className="px-2 py-1.5 text-right">{n("panne")}</td>
                   <td className="px-2 py-1.5 text-right">{n("reparation")}</td>
                   <td className="px-2 py-1.5 text-right">{n("hors_service")}</td>
@@ -80,6 +82,7 @@ async function Etat() {
               <td className="py-1.5 pr-2">Total</td>
               <td className="px-2 py-1.5 text-right">{total("circulation")}</td>
               <td className="px-2 py-1.5 text-right" />
+              <td className="px-2 py-1.5 text-right">{total("reserve")}</td>
               <td className="px-2 py-1.5 text-right">{total("panne")}</td>
               <td className="px-2 py-1.5 text-right">{total("reparation")}</td>
               <td className="px-2 py-1.5 text-right">{total("hors_service")}</td>
@@ -110,8 +113,8 @@ async function Etat() {
                 </thead>
                 <tbody>
                   {g.lignes.map((r) => (
-                    <tr key={r.numero_serie} className="border-b border-[#EEF1F4]">
-                      <td className="py-1 pr-2 font-medium">{r.numero_serie}</td>
+                    <tr key={r.id} className="border-b border-[#EEF1F4]">
+                      <td className="py-1 pr-2 font-medium">{r.numero_serie ?? SANS_NUMERO}</td>
                       <td className="px-2 py-1">{[r.marque, r.modele].filter(Boolean).join(" · ") || "—"}</td>
                       <td className={`py-1 pl-2 ${r.statut === "circulation" ? "" : "font-semibold"}`}>
                         {STATUTS[r.statut as Statut]?.label ?? r.statut}
